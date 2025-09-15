@@ -1,0 +1,41 @@
+{
+    "samplejson": "sample_json/ggh_120_post.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v1",
+    "year": {
+        "GluGluHtoGG_M-120_postEE": [
+            "2022postEE"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "GluGluHtoGG_M-120_postEE": [
+            "Pileup",
+            "Scale",
+            "Smearing",
+            "energyErrShift",
+            "AlphaS",
+            "PartonShower",
+            "LHEScale",
+            "LHEPdf",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "Material",
+            "FNUF"
+        ]
+    },
+    "corrections": {
+        "GluGluHtoGG_M-120_postEE": [
+            "Pileup",
+            "Smearing",
+            "energyErrShift",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "jerc_jet_syst",
+            "Material",
+            "FNUF"
+        ]
+    }
+}

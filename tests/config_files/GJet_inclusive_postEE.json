@@ -1,0 +1,28 @@
+{
+    "samplejson": "sample_json/GJet_inclusive_postEE.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v2",
+    "year": {
+        "GJet_inclusive_postEE": [
+            "2022postEE"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "GJet_inclusive_postEE": [
+        ]
+    },
+    "corrections": {
+        "GJet_inclusive_postEE": [
+            "Pileup",
+            "Smearing",
+            "energyErrShift",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "Material",
+            "FNUF"
+        ]
+    }
+}
+

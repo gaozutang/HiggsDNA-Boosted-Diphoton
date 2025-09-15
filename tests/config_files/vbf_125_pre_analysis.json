@@ -1,0 +1,41 @@
+{
+    "samplejson": "sample_json/vbf_125_pre.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v1",
+    "year": {
+        "VBFHtoGG_M-125_preEE": [
+            "2022preEE"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "VBFHtoGG_M-125_preEE": [
+            "Pileup",
+            "Scale",
+            "Smearing",
+            "energyErrShift",
+            "AlphaS",
+            "PartonShower",
+            "LHEScale",
+            "LHEPdf",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "Material",
+            "FNUF"
+        ]
+    },
+    "corrections": {
+        "VBFHtoGG_M-125_preEE": [
+            "Pileup",
+            "Smearing",
+            "energyErrShift",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "jerc_jet_syst",
+            "Material",
+            "FNUF"
+        ]
+    }
+}

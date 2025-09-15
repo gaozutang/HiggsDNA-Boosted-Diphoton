@@ -1,0 +1,26 @@
+{
+    "samplejson": "sample_json/data_E.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v2",
+    "year": {
+        "data_E": [
+            "2022postEE"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "data_E":[]
+    },
+    "corrections": {
+        "data_E": [
+            "Pileup",
+            "Smearing",
+            "energyErrShift",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "Material",
+            "FNUF"
+        ]
+    }
+}

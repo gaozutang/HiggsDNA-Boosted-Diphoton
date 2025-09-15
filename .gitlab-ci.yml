@@ -1,0 +1,84 @@
+image: "python:3.9"
+
+stages:
+  - build
+  - build docker
+  - tag docker
+  - static analysis
+  - test
+
+include:
+  - project: 'cms-analysis/general/container-image-ci-templates'
+    file:
+      - 'kaniko-image.gitlab-ci.yml'
+      - 'skopeo.gitlab-ci.yml'
+
+variables:
+    CONTEXT_DIR: ""
+    DOCKER_FILE_NAME: "Dockerfile"
+    GIT_SUBMODULE_STRATEGY: recursive
+    PUSH_IMAGE: "true"
+    ACCELERATED_IMAGE: "true"
+    BUILD_ARGS: ""
+    SCAN_IMAGE: "false"
+
+build:
+  stage: build
+  script:
+    - pip install -e .[dev]
+
+build_docker:
+    stage: build docker
+    rules:
+      - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "master"'
+    variables:
+      # To push to a specific docker tag other than latest(the default), amend the --destination parameter, e.g. --destination $CI_REGISTRY_IMAGE:$CI_BUILD_REF_NAME
+      # See https://docs.gitlab.com/ee/ci/variables/predefined_variables.html#variables-reference for available variables
+      #IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:latest
+      BUILD_ARGS: "FROM_IMAGE=gitlab-registry.cern.ch/batch-team/dask-lxplus/lxdask-al9:latest CLUSTER=lxplus-el9"
+      IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:lxplus-el9-${CI_COMMIT_SHORT_SHA}
+    image:
+        # The kaniko debug image is recommended because it has a shell, and a shell is required for an image to be used with GitLab CI/CD.
+        name: gcr.io/kaniko-project/executor:debug
+        entrypoint: [""]
+    script:
+        # Prepare Kaniko configuration file
+        - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+        # Build and push the image from the Dockerfile at the root of the project.
+        - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $IMAGE_DESTINATION
+        # Print the full registry path of the pushed image
+        - echo "Image pushed successfully to ${IMAGE_DESTINATION}"
+
+build_docker_latest:
+  stage: tag docker
+  extends: .tag_skopeo
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "master"'
+  variables:
+    IMAGE_ORIGIN_TAG: ${CI_REGISTRY_IMAGE}:lxplus-el9-${CI_COMMIT_SHORT_SHA}
+     #keep only latest for now as we have only the lxplus one
+     #change in the future in case we need more
+    IMAGE_DESTINATION_TAG: ${CI_REGISTRY_IMAGE}:lxplus-el9-latest
+
+static_analysis:
+  stage: static analysis
+  before_script:
+    - pip install flake8
+    - pip install mypy --quiet
+    - pip install -e.[dev]
+  script:
+    - flake8 higgs_dna/*
+    # mypy will pick up what is specified in pyproject.toml
+    #- mypy
+
+unit_test:
+  stage: test
+  before_script:
+    - pip install -e .[dev]
+  script:
+    - pwd
+    - ls -l
+    - export PYTHONPATH="$PYTHONPATH:."
+    - python -c "import sys;print(sys.path)"
+    - pytest
+

@@ -1,0 +1,19 @@
+{
+    "samplejson": "sample_json/2024_Egamma0_dataC.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v2",
+    "year": {
+        "2024_Egamma0_dataC": [
+            "2024"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "2024_Egamma0_dataC": [
+        ]
+    },
+    "corrections": {
+        "2024_Egamma0_dataC": [
+        ]
+    }
+}

@@ -1,0 +1,41 @@
+{
+    "samplejson": "sample_json/GJet_20to40_postEE.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v1",
+    "year": {
+        "GJet_20to40_postEE": [
+            "2022postEE"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "GJet_20to40_postEE": [
+            "Pileup",
+            "Scale",
+            "Smearing",
+            "energyErrShift",
+            "AlphaS",
+            "PartonShower",
+            "LHEScale",
+            "LHEPdf",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "Material",
+            "FNUF"
+        ]
+    },
+    "corrections": {
+        "GJet_20to40_postEE": [
+            "Pileup",
+            "Smearing",
+            "energyErrShift",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "jerc_jet_syst",
+            "Material",
+            "FNUF"
+        ]
+    }
+}

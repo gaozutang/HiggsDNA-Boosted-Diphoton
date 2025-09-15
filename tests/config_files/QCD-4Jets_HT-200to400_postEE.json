@@ -1,0 +1,28 @@
+{
+    "samplejson": "sample_json/QCD-4Jets_HT-200to400_postEE.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v2",
+    "year": {
+        "QCD-4Jets_HT-200to400_postEE": [
+            "2022postEE"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "QCD-4Jets_HT-200to400_postEE": [
+        ]
+    },
+    "corrections": {
+        "QCD-4Jets_HT-200to400_postEE": [
+            "Pileup",
+            "Smearing",
+            "energyErrShift",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "Material",
+            "FNUF"
+        ]
+    }
+}
+

@@ -1,0 +1,27 @@
+{
+    "samplejson": "sample_json/ggh_125_post.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v2",
+    "year": {
+        "GluGluHtoGG_M-125_postEE": [
+            "2022postEE"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "GluGluHtoGG_M-125_postEE": [
+        ]
+    },
+    "corrections": {
+        "GluGluHtoGG_M-125_postEE": [
+            "Pileup",
+            "Smearing",
+            "energyErrShift",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "Material",
+            "FNUF"
+        ]
+    }
+}

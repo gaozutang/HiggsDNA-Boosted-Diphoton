@@ -1,0 +1,28 @@
+{
+    "samplejson": "sample_json/GG_MGG-80_postEE.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v2",
+    "year": {
+        "GG_MGG-80_postEE": [
+            "2022postEE"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "GG_MGG-80_postEE": [
+        ]
+    },
+    "corrections": {
+        "GG_MGG-80_postEE": [
+            "Pileup",
+            "Smearing",
+            "energyErrShift",
+            "ElectronVetoSF",
+            "PreselSF",
+            "TriggerSF",
+            "jerc_jet_syst",
+            "Material",
+            "FNUF"
+        ]
+    }
+}
