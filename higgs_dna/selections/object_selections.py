@@ -1,6 +1,21 @@
 import awkward
 import numpy as np
 
+def deltaR(eta1, phi1, eta2, phi2):
+
+    invalid_mask = (eta1 == -999) | (phi1 == -999) | (eta2 == -999) | (phi2 == -999) | (eta1 is None) | (phi1 is None) | (eta2 is None) | (phi2 is None)
+
+    # calculate delta_r, making sure to handle the periodicity of phi
+    dphi = (phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi
+    deta = eta1 - eta2
+
+    dr = np.sqrt(deta**2 + dphi**2)
+
+    # set invalid values to -999
+    dr = awkward.where(invalid_mask, -999, dr)
+    dr = awkward.fill_none(dr, -999)
+
+    return dr
 
 def delta_r_mask(
     first: awkward.highlevel.Array, second: awkward.highlevel.Array, threshold: float

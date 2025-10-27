@@ -1,0 +1,20 @@
+{
+    "samplejson": "sample_json/QCD-4Jets_HT-400to600_2024.json",
+    "workflow": "dystudies",
+    "metaconditions": "Era2017_legacy_v2",
+    "year": {
+        "QCD-4Jets_HT-400to600_2024": [
+            "2024"
+        ]
+    },
+    "taggers": [],
+    "systematics": {
+        "QCD-4Jets_HT-400to600_2024": [
+        ]
+    },
+    "corrections": {
+        "QCD-4Jets_HT-400to600_2024": [
+        ]
+    }
+}
+

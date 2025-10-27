@@ -180,4 +180,4 @@ def get_higgs_gen_attributes(events: ak.Array) -> ak.Array:
     sublead_eta = sublead_pho.eta
     sublead_phi = sublead_pho.phi
 
-    return (pt, y, phi, lead_pt, lead_eta, lead_phi, sublead_pt, sublead_eta, sublead_phi)
+    return (lead_pho, sublead_pho)

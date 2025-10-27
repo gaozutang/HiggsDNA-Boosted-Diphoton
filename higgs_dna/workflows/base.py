@@ -8,6 +8,7 @@ from higgs_dna.tools.EELeak_region import veto_EEleak_flag
 from higgs_dna.tools.EcalBadCalibCrystal_events import remove_EcalBadCalibCrystal_events
 from higgs_dna.tools.gen_helpers import get_fiducial_flag, get_genJets, get_higgs_gen_attributes
 from higgs_dna.tools.sigma_m_tools import compute_sigma_m
+from higgs_dna.selections.object_selections import deltaR
 from higgs_dna.selections.photon_selections import photon_preselection
 from higgs_dna.selections.diphoton_selections import apply_fiducial_cut_det_level
 from higgs_dna.selections.lepton_selections import select_electrons, select_muons
@@ -272,6 +273,18 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
     def process(self, events: awkward.Array) -> Dict[Any, Any]:
         dataset_name = events.metadata["dataset"]
 
+        # Filter to remove overlap from bkg samples
+        if ("QCD" in dataset_name):
+
+            MC_filter = (ak.num(events.Photon.pt[events.Photon.genPartFlav == 1]) == 0)
+            logger.debug("MC filter to remove overlap betwee QCD and GJet samples")
+            logger.debug(f"Sample: {dataset_name}")
+            logger.debug(f"Photons.genPartFlav = {events.Photon.genPartFlav}")
+            logger.debug(f"Filter              = {MC_filter}")
+            logger.info(f"initial number of events: {len(events)}")
+            events = events[MC_filter]
+            logger.info(f"number of events after MC filter: {len(events)}")
+
         # data or monte carlo?
         self.data_kind = "mc" if hasattr(events, "GenPart") else "data"
 
@@ -329,7 +342,7 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
         #     events = remove_EcalBadCalibCrystal_events(events)
 
         # we need ScEta for corrections and systematics, it is present in NanoAODv13+ and can be calculated using PV for older versions
-        events.Photon = add_photon_SC_eta(events.Photon, events.PV)
+        # events.Photon = add_photon_SC_eta(events.Photon, events.PV)
 
         # add veto EE leak branch for photons, could also be used for electrons
         if (
@@ -512,54 +525,65 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
 
             if "globalParT3_FinetunedDeepHgg_probHaa" in FatJets.fields:
                 FatJets = FatJets[awkward.argsort(FatJets.pt, ascending=False)]
-                name_list = ["Hgg_score_tuned", "QCDb_score_tuned", "QCDbb_score_tuned", "QCDc_score_tuned", "QCDcc_score_tuned", "QCDothers_score_tuned", "Hgg_score_gloparT3", "QCD_score_gloparT3", "pt", "eta", "mass", "phi", "softdropmass", "rawFactor"]
-                variable_list = ["globalParT3_FinetunedDeepHgg_probHaa", "globalParT3_FinetunedDeepHgg_probQCDb", "globalParT3_FinetunedDeepHgg_probQCDbb", "globalParT3_FinetunedDeepHgg_probQCDc", "globalParT3_FinetunedDeepHgg_probQCDcc", "globalParT3_FinetunedDeepHgg_probQCDothers", "globalParT3_probRawHaa", "globalParT3_QCD", "pt", "eta", "mass", "phi", "msoftdrop", "rawFactor"]
+                name_list = ["Hgg_score_tuned", "NP_score_tuned", "NPNP_score_tuned", "P_score_tuned", "PNP_score_tuned", "PP_score_tuned", "QCDb_score_tuned", "QCDbb_score_tuned", "QCDc_score_tuned", "QCDcc_score_tuned", "QCDothers_score_tuned", "Hgg_score_gloparT3", "QCD_score_gloparT3", "globalParT3_massCorrGeneric", "globalParT3_massCorrRawHaa", "globalParT3_massCorrRawQCDb", "globalParT3_massCorrRawQCDbb", "globalParT3_massCorrRawQCDc", "globalParT3_massCorrRawQCDcc", "globalParT3_massCorrRawQCDothers", "pt", "eta", "mass", "phi", "softdropmass", "rawFactor"]
+                variable_list = ["globalParT3_FinetunedDeepHgg_probHaa", "globalParT3_FinetunedDeepHgg_probNP", "globalParT3_FinetunedDeepHgg_probNPNP", "globalParT3_FinetunedDeepHgg_probP", "globalParT3_FinetunedDeepHgg_probPNP", "globalParT3_FinetunedDeepHgg_probPP", "globalParT3_FinetunedDeepHgg_probQCDb", "globalParT3_FinetunedDeepHgg_probQCDbb", "globalParT3_FinetunedDeepHgg_probQCDc", "globalParT3_FinetunedDeepHgg_probQCDcc", "globalParT3_FinetunedDeepHgg_probQCDothers", "globalParT3_probRawHaa", "globalParT3_QCD", "globalParT3_massCorrGeneric", "globalParT3_massCorrRawHaa", "globalParT3_massCorrRawQCDb", "globalParT3_massCorrRawQCDbb", "globalParT3_massCorrRawQCDc", "globalParT3_massCorrRawQCDcc", "globalParT3_massCorrRawQCDothers", "pt", "eta", "mass", "phi", "msoftdrop", "rawFactor"]
             else:
                 FatJets = FatJets[awkward.argsort(FatJets.pt, ascending=False)]
                 name_list = ["pt", "eta", "mass", "phi", "softdropmass", "rawFactor"]
                 variable_list = ["pt", "eta", "mass", "phi", "msoftdrop", "rawFactor"]
 
-            FatJet = {}
-
-            
+            output = {}
 
             assert len(name_list) == len(variable_list)
 
-            for i in range(len(name_list)):
-                FatJet[name_list[i]] = choose_jet(eval(f"FatJets.{variable_list[i]}"), 0, -999)
-            FatJet = awkward.Array(FatJet)
-            
+            trigger_saved = ["Photon33", "Photon50", "Photon75", "Photon90", "Photon120", "Photon150", "Photon175", "Photon200", "Photon50_R9Id90_HE10_IsoM", "Photon75_R9Id90_HE10_IsoM", "Photon90_R9Id90_HE10_IsoM", "Photon120_R9Id90_HE10_IsoM", "Photon165_R9Id90_HE10_IsoM"]
 
+            for i in range(len(name_list)):
+                # output[name_list[i]] = choose_jet(eval(f"FatJets.{variable_list[i]}"), 0, -999)
+                output[name_list[i]] = choose_jet(getattr(FatJets, variable_list[i]), 0, -999)
+            output = awkward.Array(output)
+
+            hlt = events.HLT
+            for trig in trigger_saved:
+                if trig in events.HLT.fields:
+                    output[trig] = events.HLT[trig]
 
             if self.data_kind == "mc":
-                # Add the fiducial flags for particle level
+                # get two gen photons
+                gen_lead_pho, gen_sublead_pho = get_higgs_gen_attributes(events)
 
-                GenPTH, GenYH, GenPhiH, Genlead_pt, Genlead_eta, Genlead_phi, Gensublead_pt, Gensublead_eta, Gensublead_phi = get_higgs_gen_attributes(events)
+                def _sanitize_scalar_array(arr, fill_value=-999):
+                    """Fill None and replace NaN with a chosen fill_value for scalar awkward arrays."""
+                    arr = awkward.fill_none(arr, fill_value)
+                    return awkward.where(numpy.isnan(arr), fill_value, arr)
 
+                for _name, _arr in (
+                    ("Genleadpho_pt", gen_lead_pho.pt),
+                    ("Genleadpho_eta", gen_lead_pho.eta),
+                    ("Genleadpho_phi", gen_lead_pho.phi),
+                    ("Gensubleadpho_pt", gen_sublead_pho.pt),
+                    ("Gensubleadpho_eta", gen_sublead_pho.eta),
+                    ("Gensubleadpho_phi", gen_sublead_pho.phi),
+                ):
+                    output[_name] = _sanitize_scalar_array(_arr)
+                
+                delta_r_leadpho = deltaR(
+                    output.eta,
+                    output.phi,
+                    gen_lead_pho.eta,
+                    gen_lead_pho.phi,
+                )
 
-                Genlead_pt = awkward.fill_none(Genlead_pt, -999)
-                Genlead_pt = awkward.where(numpy.isnan(Genlead_pt), -999, Genlead_pt)
-                FatJet['Genlead_pt'] = Genlead_pt
+                delta_r_subleadpho = deltaR(
+                    output.eta,
+                    output.phi,
+                    gen_sublead_pho.eta,
+                    gen_sublead_pho.phi,
+                )
 
-                Genlead_eta = awkward.fill_none(Genlead_eta, -999)
-                Genlead_eta = awkward.where(numpy.isnan(Genlead_eta), -999, Genlead_eta)
-                FatJet['Genlead_eta'] = Genlead_eta
-
-                Genlead_phi = awkward.fill_none(Genlead_phi, -999)
-                Genlead_phi = awkward.where(numpy.isnan(Genlead_phi), -999, Genlead_phi)
-                FatJet['Genlead_phi'] = Genlead_phi
-
-                Gensublead_pt = awkward.fill_none(Gensublead_pt, -999)
-                Gensublead_pt = awkward.where(numpy.isnan(Gensublead_pt), -999, Gensublead_pt)
-                FatJet['Gensublead_pt'] = Gensublead_pt
-
-                Gensublead_eta = awkward.fill_none(Gensublead_eta, -999)
-                Gensublead_eta = awkward.where(numpy.isnan(Gensublead_eta), -999, Gensublead_eta)
-                FatJet['Gensublead_eta'] = Gensublead_eta
-
-                Gensublead_phi = awkward.fill_none(Gensublead_phi, -999)
-                Gensublead_phi = awkward.where(numpy.isnan(Gensublead_phi), -999, Gensublead_phi)
-                FatJet['Gensublead_phi'] = Gensublead_phi
+                output["deltaR_leadGenPho"] = delta_r_leadpho
+                output["deltaR_subleadGenPho"] = delta_r_subleadpho
+                
 
 
             # workflow specific processing
@@ -570,10 +594,10 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             # the shape here is ensured to be broadcastable
             for tagger in self.taggers:
                 (
-                    FatJet["_".join([tagger.name, str(tagger.priority)])],
+                    output["_".join([tagger.name, str(tagger.priority)])],
                     tagger_extra,
                 ) = tagger(
-                    events, FatJet
+                    events, output
                 )  # creates new column in diphotons - tagger priority, or 0, also return list of histrograms here?
                 histos_etc.update(tagger_extra)
 
@@ -581,11 +605,11 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             # Deal with order of tagger priorities
             # Turn from diphoton jagged array to whether or not an event was selected
             if len(self.taggers):
-                counts = awkward.num(FatJet.pt, axis=1)
+                counts = awkward.num(output.pt, axis=1)
                 flat_tags = numpy.stack(
                     (
                         awkward.flatten(
-                            FatJet[
+                            output[
                                 "_".join([tagger.name, str(tagger.priority)])
                             ]
                         )
@@ -597,50 +621,50 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
                     awkward.unflatten(flat_tags, counts), axis=2
                 )
                 winner = awkward.min(tags[tags != 0], axis=2)
-                FatJet["best_tag"] = winner
+                output["best_tag"] = winner
 
                 # lowest priority is most important (ascending sort)
                 # leave in order of diphoton pT in case of ties (stable sort)
-                sorted = awkward.argsort(FatJet.best_tag, stable=True)
-                FatJet = FatJet[sorted]
+                sorted = awkward.argsort(output.best_tag, stable=True)
+                output = output[sorted]
 
-            # set FatJet as part of the event record
-            events[f"FatJet_{do_variation}"] = FatJet
+            # set output as part of the event record
+            events[f"FatJet_{do_variation}"] = output
             # annotate diphotons with event information
-            FatJet["event"] = events.event
-            FatJet["lumi"] = events.luminosityBlock
-            FatJet["run"] = events.run
+            output["event"] = events.event
+            output["lumi"] = events.luminosityBlock
+            output["run"] = events.run
             # nPV just for validation of pileup reweighting
-            FatJet["nPV"] = events.PV.npvs
-            FatJet["fixedGridRhoAll"] = events.Rho.fixedGridRhoAll
+            output["nPV"] = events.PV.npvs
+            output["fixedGridRhoAll"] = events.Rho.fixedGridRhoAll
             # annotate diphotons with dZ information (difference between z position of GenVtx and PV) as required by flashggfinalfits
             if self.data_kind == "mc":
-                FatJet["genWeight"] = events.genWeight
-                FatJet["dZ"] = events.GenVtx.z - events.PV.z
+                output["genWeight"] = events.genWeight
+                output["dZ"] = events.GenVtx.z - events.PV.z
                 # Necessary for differential xsec measurements in final fits ("truth" variables)
-                FatJet["HTXS_Higgs_pt"] = events.HTXS.Higgs_pt
-                FatJet["HTXS_Higgs_y"] = events.HTXS.Higgs_y
-                FatJet["HTXS_njets30"] = events.HTXS.njets30  # Need to clarify if this variable is suitable, does it fulfill abs(eta_j) < 2.5? Probably not
+                output["HTXS_Higgs_pt"] = events.HTXS.Higgs_pt
+                output["HTXS_Higgs_y"] = events.HTXS.Higgs_y
+                output["HTXS_njets30"] = events.HTXS.njets30  # Need to clarify if this variable is suitable, does it fulfill abs(eta_j) < 2.5? Probably not
                 # Preparation for HTXS measurements later, start with stage 0 to disentangle VH into WH and ZH for final fits
-                FatJet["HTXS_stage_0"] = events.HTXS.stage_0
+                output["HTXS_stage_0"] = events.HTXS.stage_0
             # Fill zeros for data because there is no GenVtx for data, obviously
             else:
-                FatJet["dZ"] = awkward.zeros_like(events.PV.z)
+                output["dZ"] = awkward.zeros_like(events.PV.z)
 
             # drop events without a preselected diphoton candidate
             # drop events without a tag, if there are tags
             if len(self.taggers):
                 selection_mask = ~(
-                    awkward.is_none(FatJet)
-                    | awkward.is_none(FatJet.best_tag)
+                    awkward.is_none(output)
+                    | awkward.is_none(output.best_tag)
                 )
-                FatJet = FatJet[selection_mask]
+                output = output[selection_mask]
             else:
-                selection_mask = ~awkward.is_none(FatJet)
-                FatJet = FatJet[selection_mask]
+                selection_mask = ~awkward.is_none(output)
+                output = output[selection_mask]
 
             # return if there is no surviving events
-            if len(FatJet) == 0:
+            if len(output) == 0:
                 logger.debug("No surviving events in this run, return now!")
                 return histos_etc
             if self.data_kind == "mc":
@@ -721,8 +745,8 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
                 #                     year=self.year[dataset_name][0],
                 #                 )
 
-                FatJet["weight"] = event_weights.weight()
-                FatJet["weight_central"] = event_weights.weight() / events["genWeight"][selection_mask]
+                output["weight"] = event_weights.weight()
+                output["weight_central"] = event_weights.weight() / events["genWeight"][selection_mask]
 
                 metadata["sum_weight_central"] = str(
                     awkward.sum(event_weights.weight())
@@ -738,7 +762,7 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
                             "Adding systematic weight variations to nominal output file."
                         )
                     for modifier in event_weights.variations:
-                        FatJet["weight_" + modifier] = event_weights.weight(
+                        output["weight_" + modifier] = event_weights.weight(
                             modifier=modifier
                         )
                         if ("bTagSF" in modifier):
@@ -748,10 +772,10 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
 
             # Add weight variables (=1) for data for consistent datasets
             else:
-                FatJet["weight_central"] = awkward.ones_like(
-                    FatJet["event"]
+                output["weight_central"] = awkward.ones_like(
+                    output["event"]
                 )
-                FatJet["weight"] = awkward.ones_like(FatJet["event"])
+                output["weight"] = awkward.ones_like(output["event"])
 
             # Compute and store the different variations of sigma_m_over_m
             # FatJet = compute_sigma_m(FatJet, processor='base', flow_corrections=self.doFlow_corrections, smear=self.Smear_sigma_m, IsData=(self.data_kind == "data"))
@@ -761,9 +785,9 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
 
             if self.output_location is not None:
                 if self.output_format == "root":
-                    df = diphoton_list_to_pandas(self, FatJet)
+                    df = diphoton_list_to_pandas(self, output)
                 else:
-                    akarr = diphoton_ak_array(self, FatJet)
+                    akarr = diphoton_ak_array(self, output)
 
                     # Remove fixedGridRhoAll from photons to avoid having event-level info per photon
                     akarr = akarr[
