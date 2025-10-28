@@ -273,19 +273,6 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
     def process(self, events: awkward.Array) -> Dict[Any, Any]:
         dataset_name = events.metadata["dataset"]
 
-        # Filter to remove overlap from bkg samples
-        if ("QCD" in dataset_name):
-
-            photons = events.Photon
-            MC_filter = (awkward.num(photons.genPartFlav == 1) == 0)
-            logger.debug("MC filter to remove overlap betwee QCD and GJet samples")
-            logger.debug(f"Sample: {dataset_name}")
-            logger.debug(f"Photons.genPartFlav = {photons.genPartFlav}")
-            logger.debug(f"Filter              = {MC_filter}")
-            logger.info(f"initial number of events: {len(events)}")
-            events = events[MC_filter]
-            logger.info(f"number of events after MC filter: {len(events)}")
-
         # data or monte carlo?
         self.data_kind = "mc" if hasattr(events, "GenPart") else "data"
 
@@ -311,6 +298,19 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             histos_etc[dataset_name]["nNeg"] = int(0)
             histos_etc[dataset_name]["nEff"] = int(histos_etc[dataset_name]["nTot"])
             histos_etc[dataset_name]["genWeightSum"] = float(len(events))
+
+        # Filter to remove overlap from bkg samples
+        if ("QCD" in dataset_name):
+
+            photons = events.Photon
+            MC_filter = (awkward.num(photons.genPartFlav == 1) == 0)
+            logger.debug("MC filter to remove overlap betwee QCD and GJet samples")
+            logger.debug(f"Sample: {dataset_name}")
+            logger.debug(f"Photons.genPartFlav = {photons.genPartFlav}")
+            logger.debug(f"Filter              = {MC_filter}")
+            logger.info(f"initial number of events: {len(events)}")
+            events = events[MC_filter]
+            logger.info(f"number of events after MC filter: {len(events)}")
 
         # lumi mask
         if self.data_kind == "data":
