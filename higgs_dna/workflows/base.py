@@ -276,10 +276,11 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
         # Filter to remove overlap from bkg samples
         if ("QCD" in dataset_name):
 
-            MC_filter = (ak.num(events.Photon.pt[events.Photon.genPartFlav == 1]) == 0)
+            photons = events.Photon
+            MC_filter = (awkward.num(photons.genPartFlav == 1) == 0)
             logger.debug("MC filter to remove overlap betwee QCD and GJet samples")
             logger.debug(f"Sample: {dataset_name}")
-            logger.debug(f"Photons.genPartFlav = {events.Photon.genPartFlav}")
+            logger.debug(f"Photons.genPartFlav = {photons.genPartFlav}")
             logger.debug(f"Filter              = {MC_filter}")
             logger.info(f"initial number of events: {len(events)}")
             events = events[MC_filter]
