@@ -1,0 +1,16 @@
+{
+    "Pass_Presel": {
+        "cat_filter": [
+            ["pass_presel_fiducialcut", "==", true],
+            ["pt", ">=", -1],
+            ["Hgg_score_gloparT3", ">", 0.9837]
+        ]
+    },
+    "NoPass_Presel": {
+        "cat_filter": [
+            ["pass_presel_fiducialcut", "==", false],
+            ["pt", ">=", -1],
+            ["Hgg_score_gloparT3", ">", 0.9767]
+        ]
+    }
+}

@@ -86,7 +86,7 @@ else:
 
 # Dictionary for renaming variables in ROOT tree output for final fits
 rename_dict = {
-    "mass": "CMS_hgg_mass"
+    "softdropmass_raw": "CMS_hgg_mass"
 }
 
 df_dict = {}
@@ -204,6 +204,9 @@ if args.do_syst:
             )
 
             eve = ak.from_parquet(var_path)
+            if type == "data":
+                mass_mask = (eve["softdropmass_raw"] >= 100) & (eve["softdropmass_raw"] <= 180)
+                eve = eve[mass_mask]
 
             logger.info("Successfully read from parquet file with awkward.")
 

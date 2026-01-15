@@ -10,7 +10,7 @@ from higgs_dna.tools.gen_helpers import get_fiducial_flag, get_genJets, get_higg
 from higgs_dna.tools.sigma_m_tools import compute_sigma_m
 from higgs_dna.selections.object_selections import deltaR
 from higgs_dna.selections.photon_selections import photon_preselection
-from higgs_dna.selections.diphoton_selections import apply_fiducial_cut_det_level
+from higgs_dna.selections.diphoton_selections import apply_fiducial_cut_det_level, build_diphoton_candidates
 from higgs_dna.selections.lepton_selections import select_electrons, select_muons
 from higgs_dna.selections.jet_selections import select_jets, jetvetomap
 from higgs_dna.selections.lumi_selections import select_lumis
@@ -284,6 +284,8 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             histos_etc[dataset_name]["nTot"] = int(
                 awkward.num(events.genWeight, axis=0)
             )
+            print(histos_etc[dataset_name]["nTot"])
+            print(histos_etc[dataset_name]["nTot"])
             histos_etc[dataset_name]["nPos"] = int(awkward.sum(events.genWeight > 0))
             histos_etc[dataset_name]["nNeg"] = int(awkward.sum(events.genWeight < 0))
             histos_etc[dataset_name]["nEff"] = int(
@@ -336,7 +338,7 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             metadata["sum_genw_presel"] = "Data"
 
         # apply filters and triggers
-        events = self.apply_filters_and_triggers(events)
+        # events = self.apply_filters_and_triggers(events)
 
         # remove events affected by EcalBadCalibCrystal
         # if self.data_kind == "data":
@@ -511,7 +513,12 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
                 photons = self.add_photonid_mva(photons, events)
 
             # photon preselection
-            # photons = photon_preselection(self, photons, events, year=self.year[dataset_name][0])
+            photons_presel = photon_preselection(self, photons, events, year=self.year[dataset_name][0])
+            diphotons = build_diphoton_candidates(photons_presel, self.min_pt_lead_photon)
+            pass_preselction = awkward.num(diphotons) > 0
+
+            diphotons = apply_fiducial_cut_det_level(self, diphotons)
+            pass_preselction_and_fiducial_cut = awkward.num(diphotons) > 0
 
             # sort photons in each event descending in pt
             # make descending-pt combinations of photons
@@ -522,12 +529,103 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             )  # added this because charge is not a property of photons in nanoAOD v11. We just assume every photon has charge zero...
             lead_photon = photons[:, :1]
             FatJets = events.FatJet
+            print("numevents", len(FatJets.pt))
+            print("numevents", len(FatJets.pt))
+            SubJets = events.SubJet
+
+            def get_subjet_vars(FatJets, SubJets, idx_name):
+                mask = FatJets[idx_name] >= 0
+                idx = awkward.where(mask, FatJets[idx_name], 0)
+
+                vars = ["pt", "eta", "phi", "mass", "rawFactor"]
+                subjet = {}
+                subjet_raw = {}
+
+                for var in vars:
+                    val = getattr(SubJets, var)[idx]
+                    if var in ["pt", "mass"]:
+                        raw_val = val * (1 - getattr(SubJets, "rawFactor")[idx])
+                        print("rawFactor", getattr(SubJets, "rawFactor")[idx])
+                        print("rawFactor", getattr(SubJets, "rawFactor")[idx])
+                    else:
+                        raw_val = val
+                    subjet[var] = awkward.where(mask, val, -999)
+                    subjet_raw[var] = awkward.where(mask, raw_val, -999)
+                return awkward.zip(subjet), awkward.zip(subjet_raw)
+            
+            SubJet1, SubJet1_raw = get_subjet_vars(FatJets, SubJets, "subJetIdx1")
+            SubJet2, SubJet2_raw = get_subjet_vars(FatJets, SubJets, "subJetIdx2")
+
+            SubJet1_vec = awkward.zip(
+                {
+                    "pt": SubJet1.pt,
+                    "eta": SubJet1.eta,
+                    "phi": SubJet1.phi,
+                    "mass": SubJet1.mass,
+                },
+                with_name="Momentum4D",
+            )
+
+            SubJet2_vec = awkward.zip(
+                {
+                    "pt": SubJet2.pt,
+                    "eta": SubJet2.eta,
+                    "phi": SubJet2.phi,
+                    "mass": SubJet2.mass,
+                },
+                with_name="Momentum4D",
+            )
+
+            dijet = SubJet1_vec + SubJet2_vec
+
+            both_valid = (SubJet1.pt > 0) & (SubJet2.pt > 0)
+            only1_valid = (SubJet1.pt > 0) & (SubJet2.pt <= 0)
+            only2_valid = (SubJet2.pt > 0) & (SubJet1.pt <= 0)
+            dijet_mass = awkward.where(
+                    both_valid, dijet.mass,
+                    awkward.where(only1_valid, SubJet1_vec.mass,
+                    awkward.where(only2_valid, SubJet2_vec.mass, -999))
+                )
+            
+            SubJet1_raw_vec = awkward.zip(
+                {
+                    "pt": SubJet1_raw.pt,
+                    "eta": SubJet1_raw.eta,
+                    "phi": SubJet1_raw.phi,
+                    "mass": SubJet1_raw.mass,
+                },
+                with_name="Momentum4D",
+            )
+
+            SubJet2_raw_vec = awkward.zip(
+                {
+                    "pt": SubJet2_raw.pt,
+                    "eta": SubJet2_raw.eta,
+                    "phi": SubJet2_raw.phi,
+                    "mass": SubJet2_raw.mass,
+                },
+                with_name="Momentum4D",
+            )
+
+            dijet_raw = SubJet1_raw_vec + SubJet2_raw_vec
+
+            both_valid_raw = (SubJet1_raw.pt > 0) & (SubJet2_raw.pt > 0)
+            only1_valid_raw = (SubJet1_raw.pt > 0) & (SubJet2_raw.pt <= 0)
+            only2_valid_raw = (SubJet2_raw.pt > 0) & (SubJet1_raw.pt <= 0)
+            dijet_mass_raw = awkward.where(
+                    both_valid_raw, dijet_raw.mass,
+                    awkward.where(only1_valid_raw, SubJet1_raw_vec.mass,
+                    awkward.where(only2_valid_raw, SubJet2_raw_vec.mass, -999))
+                )
+            
+            FatJets['msoftdrop_raw'] = dijet_mass_raw
+
             # FatJets = FatJets[Fatjet_preselection(self, FatJets, lead_photon)]
 
             if "globalParT3_FinetunedDeepHgg_probHaa" in FatJets.fields:
                 FatJets = FatJets[awkward.argsort(FatJets.pt, ascending=False)]
-                name_list = ["Hgg_score_tuned", "NP_score_tuned", "NPNP_score_tuned", "P_score_tuned", "PNP_score_tuned", "PP_score_tuned", "QCDb_score_tuned", "QCDbb_score_tuned", "QCDc_score_tuned", "QCDcc_score_tuned", "QCDothers_score_tuned", "Hgg_score_gloparT3", "QCD_score_gloparT3", "globalParT3_massCorrGeneric", "globalParT3_massCorrRawHaa", "globalParT3_massCorrRawQCDb", "globalParT3_massCorrRawQCDbb", "globalParT3_massCorrRawQCDc", "globalParT3_massCorrRawQCDcc", "globalParT3_massCorrRawQCDothers", "pt", "eta", "mass", "phi", "softdropmass", "rawFactor"]
-                variable_list = ["globalParT3_FinetunedDeepHgg_probHaa", "globalParT3_FinetunedDeepHgg_probNP", "globalParT3_FinetunedDeepHgg_probNPNP", "globalParT3_FinetunedDeepHgg_probP", "globalParT3_FinetunedDeepHgg_probPNP", "globalParT3_FinetunedDeepHgg_probPP", "globalParT3_FinetunedDeepHgg_probQCDb", "globalParT3_FinetunedDeepHgg_probQCDbb", "globalParT3_FinetunedDeepHgg_probQCDc", "globalParT3_FinetunedDeepHgg_probQCDcc", "globalParT3_FinetunedDeepHgg_probQCDothers", "globalParT3_probRawHaa", "globalParT3_QCD", "globalParT3_massCorrGeneric", "globalParT3_massCorrRawHaa", "globalParT3_massCorrRawQCDb", "globalParT3_massCorrRawQCDbb", "globalParT3_massCorrRawQCDc", "globalParT3_massCorrRawQCDcc", "globalParT3_massCorrRawQCDothers", "pt", "eta", "mass", "phi", "msoftdrop", "rawFactor"]
+                name_list = ["Hgg_score_tuned", "NP_score_tuned", "NPNP_score_tuned", "P_score_tuned", "PNP_score_tuned", "PP_score_tuned", "QCDb_score_tuned", "QCDbb_score_tuned", "QCDc_score_tuned", "QCDcc_score_tuned", "QCDothers_score_tuned", "Hgg_score_gloparT3", "QCD_score_gloparT3", "globalParT3_massCorrGeneric", "globalParT3_massCorrRawHaa", "globalParT3_massCorrRawQCDb", "globalParT3_massCorrRawQCDbb", "globalParT3_massCorrRawQCDc", "globalParT3_massCorrRawQCDcc", "globalParT3_massCorrRawQCDothers", "pt", "eta", "mass", "phi", "softdropmass", "softdropmass_raw", "rawFactor"]
+                variable_list = ["globalParT3_FinetunedDeepHgg_probHaa", "globalParT3_FinetunedDeepHgg_probNP", "globalParT3_FinetunedDeepHgg_probNPNP", "globalParT3_FinetunedDeepHgg_probP", "globalParT3_FinetunedDeepHgg_probPNP", "globalParT3_FinetunedDeepHgg_probPP", "globalParT3_FinetunedDeepHgg_probQCDb", "globalParT3_FinetunedDeepHgg_probQCDbb", "globalParT3_FinetunedDeepHgg_probQCDc", "globalParT3_FinetunedDeepHgg_probQCDcc", "globalParT3_FinetunedDeepHgg_probQCDothers", "globalParT3_probRawHaa", "globalParT3_QCD", "globalParT3_massCorrGeneric", "globalParT3_massCorrRawHaa", "globalParT3_massCorrRawQCDb", "globalParT3_massCorrRawQCDbb", "globalParT3_massCorrRawQCDc", "globalParT3_massCorrRawQCDcc", "globalParT3_massCorrRawQCDothers", "pt", "eta", "mass", "phi", "msoftdrop", "msoftdrop_raw", "rawFactor"]
             else:
                 FatJets = FatJets[awkward.argsort(FatJets.pt, ascending=False)]
                 name_list = ["pt", "eta", "mass", "phi", "softdropmass", "rawFactor"]
@@ -543,6 +641,10 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
                 # output[name_list[i]] = choose_jet(eval(f"FatJets.{variable_list[i]}"), 0, -999)
                 output[name_list[i]] = choose_jet(getattr(FatJets, variable_list[i]), 0, -999)
             output = awkward.Array(output)
+            
+            # add pres
+            output["pass_presel"] = pass_preselction
+            output["pass_presel_fiducialcut"] = pass_preselction_and_fiducial_cut
 
             hlt = events.HLT
             for trig in trigger_saved:

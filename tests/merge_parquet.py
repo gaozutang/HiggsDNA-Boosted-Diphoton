@@ -167,7 +167,6 @@ else:
     )
     cat_dict = {"NOTAG": {"cat_filter": [("pt", ">", -1.0)]}}
 
-
 # TODO: is it possible to read all files metadata with the ParquetDataset function. Currently extracting norm outside
 if (not args.is_data) & (not args.skip_normalisation):
     logger.info(

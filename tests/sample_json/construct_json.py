@@ -17,8 +17,8 @@ parser.add_argument("--name", type=str, help="name")
 args = parser.parse_args()
 nano_dir = args.source
 name = args.name
-# das_file_cmd = f'/cvmfs/cms.cern.ch/common/dasgoclient -query=\"file dataset={nano_dir} instance=prod/phys03"'
-das_file_cmd = f'/cvmfs/cms.cern.ch/common/dasgoclient -query=\"file dataset={nano_dir}"'
+das_file_cmd = f'/cvmfs/cms.cern.ch/common/dasgoclient -query=\"file dataset={nano_dir} instance=prod/phys03"'
+# das_file_cmd = f'/cvmfs/cms.cern.ch/common/dasgoclient -query=\"file dataset={nano_dir}"'
 print(das_file_cmd)
 das_output_files = os.popen(das_file_cmd).readlines()
 print(das_output_files)
