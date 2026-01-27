@@ -1,7 +1,7 @@
 {
     "samplejson": "sample_json/GluGluHtoGG_M-125_2024_test.json",
     "workflow": "dystudies",
-    "metaconditions": "Era2017_legacy_v2",
+    "metaconditions": "Era2017_legacy_v1",
     "year": {
         "GluGluHtoGG_M-125_2024": [
             "2024"

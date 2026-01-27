@@ -1,6 +1,41 @@
 import awkward
 import numpy as np
 
+def deltaR_highlevel(FatJets, lead_photon):
+    """
+    """
+    
+    # 保证 lead_photon 的 eta, phi 是 (nEvents,) 的一维
+    lead_eta = awkward.firsts(lead_photon.eta)  # 如果事件没 photon，返回 None
+    lead_phi = awkward.firsts(lead_photon.phi)
+
+    # 定义 Δφ 处理函数
+    def delta_phi(phi1, phi2):
+        dphi = (phi1 - phi2 + np.pi) % (2 * np.pi) - np.pi
+        return dphi
+
+    # 定义 ΔR 计算函数
+    def calc_dr(feta, fphi, leta, lphi):
+        # 事件内 FatJets 为空，返回空数组
+        if leta is None or lphi is None:
+            return awkward.Array([], type="0 * float64")
+        # 遇到非法值返回 -999
+        invalid_mask = (feta == -999) | (fphi == -999) | (leta == -999) | (lphi == -999)
+        dphi = delta_phi(fphi, lphi)
+        deta = feta - leta
+        dr = np.sqrt(deta**2 + dphi**2)
+        dr = awkward.where(invalid_mask, -999, dr)
+        return dr
+
+    # 使用 awkward.Array 对事件循环 map
+    delta_r = awkward.Array([
+        calc_dr(fetas, fphis, leta, lphi)
+        for fetas, fphis, leta, lphi in zip(FatJets.eta, FatJets.phi, lead_eta, lead_phi)
+    ])
+    
+    return delta_r
+
+
 def deltaR(eta1, phi1, eta2, phi2):
 
     invalid_mask = (eta1 == -999) | (phi1 == -999) | (eta2 == -999) | (phi2 == -999) | (eta1 is None) | (phi1 is None) | (eta2 is None) | (phi2 is None)

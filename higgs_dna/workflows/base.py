@@ -8,7 +8,7 @@ from higgs_dna.tools.EELeak_region import veto_EEleak_flag
 from higgs_dna.tools.EcalBadCalibCrystal_events import remove_EcalBadCalibCrystal_events
 from higgs_dna.tools.gen_helpers import get_fiducial_flag, get_genJets, get_higgs_gen_attributes
 from higgs_dna.tools.sigma_m_tools import compute_sigma_m
-from higgs_dna.selections.object_selections import deltaR
+from higgs_dna.selections.object_selections import deltaR, deltaR_highlevel
 from higgs_dna.selections.photon_selections import photon_preselection
 from higgs_dna.selections.diphoton_selections import apply_fiducial_cut_det_level, build_diphoton_candidates
 from higgs_dna.selections.lepton_selections import select_electrons, select_muons
@@ -324,11 +324,15 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
                     f"[ lumimask ] Skip now! Unable to find year info of {dataset_name}"
                 )
         # apply jetvetomap: only retain events that without any jets in the EE leakage region
+        print("here:", len(events.Photon.pt))
+        print("here:", len(events.Photon.pt))
         if not self.skipJetVetoMap:
             events = jetvetomap(
                 events, logger, dataset_name, year=self.year[dataset_name][0]
             )
         # metadata array to append to higgsdna output
+        print("here1:", len(events.Photon.pt))
+        print("here1:", len(events.Photon.pt))
         metadata = {}
 
         if self.data_kind == "mc":
@@ -338,7 +342,9 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             metadata["sum_genw_presel"] = "Data"
 
         # apply filters and triggers
-        # events = self.apply_filters_and_triggers(events)
+        events = self.apply_filters_and_triggers(events)
+        print("here2:", len(events.Photon.pt))
+        print("here2:", len(events.Photon.pt))
 
         # remove events affected by EcalBadCalibCrystal
         # if self.data_kind == "data":
@@ -515,7 +521,14 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             # photon preselection
             photons_presel = photon_preselection(self, photons, events, year=self.year[dataset_name][0])
             diphotons = build_diphoton_candidates(photons_presel, self.min_pt_lead_photon)
+
             pass_preselction = awkward.num(diphotons) > 0
+            diphoton_mass = diphotons.mass
+            diphoton_pt = diphotons.pt
+            diphoton_eta = diphotons.eta
+            diphoton_phi = diphotons.phi
+            diphoton_rapidity = diphotons.rapidity
+            diphoton_charge = diphotons.charge
 
             diphotons = apply_fiducial_cut_det_level(self, diphotons)
             pass_preselction_and_fiducial_cut = awkward.num(diphotons) > 0
@@ -529,8 +542,8 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
             )  # added this because charge is not a property of photons in nanoAOD v11. We just assume every photon has charge zero...
             lead_photon = photons[:, :1]
             FatJets = events.FatJet
-            print("numevents", len(FatJets.pt))
-            print("numevents", len(FatJets.pt))
+            print("numevents", len(FatJets.pt), len(photons.pt))
+            print("numevents", len(FatJets.pt), len(photons.pt))
             SubJets = events.SubJet
 
             def get_subjet_vars(FatJets, SubJets, idx_name):
@@ -619,15 +632,17 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
                 )
             
             FatJets['msoftdrop_raw'] = dijet_mass_raw
+            dr_leadpho = deltaR_highlevel(
+                    FatJets, lead_photon
+                )
+            FatJets['dr_leadpho'] = dr_leadpho
 
             # FatJets = FatJets[Fatjet_preselection(self, FatJets, lead_photon)]
 
             if "globalParT3_FinetunedDeepHgg_probHaa" in FatJets.fields:
-                FatJets = FatJets[awkward.argsort(FatJets.pt, ascending=False)]
                 name_list = ["Hgg_score_tuned", "NP_score_tuned", "NPNP_score_tuned", "P_score_tuned", "PNP_score_tuned", "PP_score_tuned", "QCDb_score_tuned", "QCDbb_score_tuned", "QCDc_score_tuned", "QCDcc_score_tuned", "QCDothers_score_tuned", "Hgg_score_gloparT3", "QCD_score_gloparT3", "globalParT3_massCorrGeneric", "globalParT3_massCorrRawHaa", "globalParT3_massCorrRawQCDb", "globalParT3_massCorrRawQCDbb", "globalParT3_massCorrRawQCDc", "globalParT3_massCorrRawQCDcc", "globalParT3_massCorrRawQCDothers", "pt", "eta", "mass", "phi", "softdropmass", "softdropmass_raw", "rawFactor"]
                 variable_list = ["globalParT3_FinetunedDeepHgg_probHaa", "globalParT3_FinetunedDeepHgg_probNP", "globalParT3_FinetunedDeepHgg_probNPNP", "globalParT3_FinetunedDeepHgg_probP", "globalParT3_FinetunedDeepHgg_probPNP", "globalParT3_FinetunedDeepHgg_probPP", "globalParT3_FinetunedDeepHgg_probQCDb", "globalParT3_FinetunedDeepHgg_probQCDbb", "globalParT3_FinetunedDeepHgg_probQCDc", "globalParT3_FinetunedDeepHgg_probQCDcc", "globalParT3_FinetunedDeepHgg_probQCDothers", "globalParT3_probRawHaa", "globalParT3_QCD", "globalParT3_massCorrGeneric", "globalParT3_massCorrRawHaa", "globalParT3_massCorrRawQCDb", "globalParT3_massCorrRawQCDbb", "globalParT3_massCorrRawQCDc", "globalParT3_massCorrRawQCDcc", "globalParT3_massCorrRawQCDothers", "pt", "eta", "mass", "phi", "msoftdrop", "msoftdrop_raw", "rawFactor"]
             else:
-                FatJets = FatJets[awkward.argsort(FatJets.pt, ascending=False)]
                 name_list = ["pt", "eta", "mass", "phi", "softdropmass", "rawFactor"]
                 variable_list = ["pt", "eta", "mass", "phi", "msoftdrop", "rawFactor"]
 
@@ -635,16 +650,27 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
 
             assert len(name_list) == len(variable_list)
 
-            trigger_saved = ["Photon33", "Photon50", "Photon75", "Photon90", "Photon120", "Photon150", "Photon175", "Photon200", "Photon50_R9Id90_HE10_IsoM", "Photon75_R9Id90_HE10_IsoM", "Photon90_R9Id90_HE10_IsoM", "Photon120_R9Id90_HE10_IsoM", "Photon165_R9Id90_HE10_IsoM"]
+            trigger_saved = ["Photon33", "Photon50", "Photon75", "Photon90", "Photon120", "Photon150", "Photon175", "Photon200", "Photon50_R9Id90_HE10_IsoM", "Photon75_R9Id90_HE10_IsoM", "Photon90_R9Id90_HE10_IsoM", "Photon120_R9Id90_HE10_IsoM", "Photon165_R9Id90_HE10_IsoM", "HLT_Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90", "HLT_Diphoton30_22_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95"]
+
+            FatJets_ptsorted = FatJets[awkward.argsort(FatJets.pt, ascending=False)]
+
+            FatJets_drsorted = FatJets[Fatjet_preselection(self, FatJets, lead_photon)]
+            FatJets_drsorted = FatJets_drsorted[awkward.argsort(FatJets_drsorted.dr_leadpho, ascending=True)]
 
             for i in range(len(name_list)):
-                # output[name_list[i]] = choose_jet(eval(f"FatJets.{variable_list[i]}"), 0, -999)
-                output[name_list[i]] = choose_jet(getattr(FatJets, variable_list[i]), 0, -999)
+                output[name_list[i] + "_ptsorted"] = choose_jet(getattr(FatJets_ptsorted, variable_list[i]), 0, -999)
+                output[name_list[i] + "_dRsorted"] = choose_jet(getattr(FatJets_drsorted, variable_list[i]), 0, -999)
             output = awkward.Array(output)
             
-            # add pres
+            # add presel
             output["pass_presel"] = pass_preselction
             output["pass_presel_fiducialcut"] = pass_preselction_and_fiducial_cut
+            output["diphoton_mass"] = diphoton_mass
+            output["diphoton_pt"] = diphoton_pt
+            output["diphoton_eta"] = diphoton_eta
+            output["diphoton_phi"] = diphoton_phi
+            output["diphoton_rapidity"] = diphoton_rapidity
+            output["diphoton_charge"] = diphoton_charge
 
             hlt = events.HLT
             for trig in trigger_saved:
@@ -670,22 +696,39 @@ class HggBaseProcessor(processor.ProcessorABC):  # type: ignore
                 ):
                     output[_name] = _sanitize_scalar_array(_arr)
                 
-                delta_r_leadpho = deltaR(
-                    output.eta,
-                    output.phi,
+                delta_r_leadpho_ptsorted = deltaR(
+                    output.eta_ptsorted,
+                    output.phi_ptsorted,
                     gen_lead_pho.eta,
                     gen_lead_pho.phi,
                 )
 
-                delta_r_subleadpho = deltaR(
-                    output.eta,
-                    output.phi,
+                delta_r_subleadpho_ptsorted = deltaR(
+                    output.eta_ptsorted,
+                    output.phi_ptsorted,
                     gen_sublead_pho.eta,
                     gen_sublead_pho.phi,
                 )
 
-                output["deltaR_leadGenPho"] = delta_r_leadpho
-                output["deltaR_subleadGenPho"] = delta_r_subleadpho
+                delta_r_leadpho_dRsorted = deltaR(
+                    output.eta_dRsorted,
+                    output.phi_dRsorted,
+                    gen_lead_pho.eta,
+                    gen_lead_pho.phi,
+                )
+
+                delta_r_subleadpho_dRsorted = deltaR(
+                    output.eta_dRsorted,
+                    output.phi_dRsorted,
+                    gen_sublead_pho.eta,
+                    gen_sublead_pho.phi,
+                )
+
+                output["deltaR_leadGenPho_ptsorted"] = delta_r_leadpho_ptsorted
+                output["deltaR_subleadGenPho_ptsorted"] = delta_r_subleadpho_ptsorted
+
+                output["deltaR_leadGenPho_dRsorted"] = delta_r_leadpho_dRsorted
+                output["deltaR_subleadGenPho_dRsorted"] = delta_r_subleadpho_dRsorted
                 
 
 
